@@ -321,7 +321,9 @@ const SessionPage = () => {
                 className="text-xs bg-transparent text-slate-700 dark:text-slate-200 outline-none cursor-pointer appearance-none pr-4"
               >
                 {SUPPORTED_LANGUAGES.map((l) => (
-                  <option key={l} value={l}>{LANG_LABELS[l] || l}</option>
+                  <option key={l} value={l} style={{ color: '#1e293b', backgroundColor: '#ffffff' }}>
+                    {LANG_LABELS[l] || l}
+                  </option>
                 ))}
               </select>
               <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 pointer-events-none" />
