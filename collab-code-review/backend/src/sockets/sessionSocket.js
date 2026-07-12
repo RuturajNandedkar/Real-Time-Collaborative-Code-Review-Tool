@@ -100,11 +100,11 @@ const registerSessionHandlers = (io, socket) => {
         (p) => p.user._id.toString() === user._id.toString()
       );
 
-      // Auto-join as observer if session exists but user isn't yet a participant
+      // Auto-join as reviewer if session exists but user isn't yet a participant
       if (!isCreator && !isParticipant) {
-        session.participants.push({ user: user._id, role: 'observer' });
+        session.participants.push({ user: user._id, role: 'reviewer' });
         await session.save();
-        logger.info(`👤 Auto-joined ${user.username} as observer to session ${sessionId}`);
+        logger.info(`👤 Auto-joined ${user.username} as reviewer to session ${sessionId}`);
       }
 
       // Join the Socket.IO room named by sessionId

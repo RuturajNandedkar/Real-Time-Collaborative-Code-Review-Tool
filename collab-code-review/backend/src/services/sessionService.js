@@ -56,7 +56,10 @@ const getSessionById = async (sessionId, userId) => {
   );
 
   if (!isCreator && !isParticipant) {
-    throw new AppError('You do not have access to this session.', 403);
+    session.participants.push({ user: userId, role: 'reviewer' });
+    await session.save();
+    // Re-populate participants list
+    await session.populate('participants.user', 'username avatar');
   }
 
   return session;

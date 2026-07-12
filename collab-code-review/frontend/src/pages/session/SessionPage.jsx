@@ -216,11 +216,11 @@ const SessionPage = () => {
     [emitForceSave, handleCursorChange]
   );
 
-  // ── Copy sessionId ──────────────────────────────────────────────────────────
+  // ── Copy sessionId (Full Invite Link) ──────────────────────────────────────
   const copySessionId = () => {
-    navigator.clipboard.writeText(sessionId);
+    navigator.clipboard.writeText(window.location.href);
     setCopied(true);
-    toast.success('Session ID copied!');
+    toast.success('Invite link copied!');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -313,11 +313,11 @@ const SessionPage = () => {
               <button
                 id="copy-session-id-btn"
                 onClick={copySessionId}
-                className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-brand-400 transition-colors font-mono"
-                title="Copy session ID"
+                className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-brand-400 transition-colors font-mono"
+                title="Copy invite link"
               >
                 {copied ? <CheckCheck className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                {sessionId?.slice(0, 8)}…
+                <span>{copied ? 'Link copied!' : 'Invite link'}</span>
               </button>
               {lastSavedAt && (
                 <span className="text-[10px] text-slate-400 flex items-center gap-1">
