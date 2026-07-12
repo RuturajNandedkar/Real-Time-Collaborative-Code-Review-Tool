@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useSessionSocket from '../../hooks/useSessionSocket';
+import { getSocket } from '../../lib/socket';
 import {
   useSession, useSessionComments, sessionCommentKeys, useRunAiReview
 } from '../../hooks/useSessions';
@@ -109,30 +110,8 @@ const SessionPage = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // ── Setup Socket comment sync ───────────────────────────────────────────────
-  useEffect(() => {
-    const socket = useSessionSocket(sessionId).socket; // get socket client context
-    const activeSocket = queryClient.getQueryData(['socket']) || window.socketInstance; // fallback
-    
-    // We can also bind listeners directly inside useSessionSocket or dynamically
-    // In our useSessionSocket implementation, it already returns getSocket()
-    // Let's retrieve getSocket()
-    const getSocket = () => {
-      try {
-        const { getSocket: gs } = require('../../lib/socket');
-        return gs();
-      } catch {
-        return window.socket;
-      }
-    };
-  }, [sessionId, queryClient]);
-
   // Handle live comment synchronization
   useEffect(() => {
-    // Invalidate react query cache on socket events
-    const socket = useSessionSocket(sessionId).socket;
-    // Since useSessionSocket returns getSocket() internally, let's grab it:
-    const { getSocket } = require('../../lib/socket');
     const s = getSocket();
 
     if (!s) return;
