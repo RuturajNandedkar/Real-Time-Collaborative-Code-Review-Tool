@@ -153,6 +153,21 @@ All protected endpoints require a valid JWT token in the `Authorization` header 
 
 ---
 
+## 🤖 AI Code Review System
+
+The platform features an automated AI Code Review integration that analyzes the current code using Anthropic Claude or OpenAI models, with an intelligent local regex-based analyzer fallback for testing/demo environments.
+
+- **Trigger API**: `POST /api/sessions/:sessionId/ai-review` (Payload: `{ code, language }`)
+- **JSON Structured Response**: Returns categorized issues:
+  - `bugs` (`array` of `{ line, issue, severity }`)
+  - `codeSmells` (`array` of `{ line, issue, suggestion }`)
+  - `securityIssues` (`array` of `{ line, issue, severity }`)
+  - `overallQualityScore` (`number` between 0-100)
+- **Monaco Annotations**: Color-coded squiggly underlines on matching lines in the editor (Red for Security/High severity bugs, Orange for Medium severity, Yellow for Smells/Low severity) along with detailed markdown hover messages.
+- **Interactive Summary Panel**: Displayed in the sidebar with a dynamic overall quality score gauge and list of reviews. Clicking on any issue card automatically scrolls the Monaco editor to and highlights the target line.
+
+---
+
 ## 🛡️ Security & Reliability
 
 - **Socket JWT Authorization**: Custom socket handshake validation matches token on connection.

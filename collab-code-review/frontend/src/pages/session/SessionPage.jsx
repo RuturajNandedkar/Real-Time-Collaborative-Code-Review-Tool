@@ -4,16 +4,20 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, Save, Maximize2, Minimize2, Languages,
   MessageSquare, Users, Copy, CheckCheck, Loader2,
-  Clock, Send, X, ChevronDown, MessageSquareCode
+  Clock, Send, X, ChevronDown, MessageSquareCode, Sparkles
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useSessionSocket from '../../hooks/useSessionSocket';
-import { useSession, useSessionComments, sessionCommentKeys } from '../../hooks/useSessions';
+import {
+  useSession, useSessionComments, sessionCommentKeys, useRunAiReview
+} from '../../hooks/useSessions';
 import MonacoEditor from '../../components/editor/MonacoEditor';
 import CursorOverlay from '../../components/editor/CursorOverlay';
 import CommentOverlay from '../../components/editor/CommentOverlay';
+import AiReviewOverlay from '../../components/editor/AiReviewOverlay';
 import ActiveUserList from '../../components/session/ActiveUserList';
 import SessionCommentsSidebar from '../../components/session/SessionCommentsSidebar';
+import AiReviewSummarySidebar from '../../components/session/AiReviewSummarySidebar';
 import { formatDistanceToNow, format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -54,6 +58,9 @@ const SessionPage = () => {
   // Comments query to display count in toolbar and pass to CommentOverlay
   const { data: comments = [] } = useSessionComments(sessionId);
 
+  // AI Review hook
+  const runAiReviewMutation = useRunAiReview(sessionId);
+
   // All real-time state from socket
   const {
     sessionData,
@@ -78,6 +85,8 @@ const SessionPage = () => {
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showAiReview, setShowAiReview] = useState(false);
+  const [aiReviewResult, setAiReviewResult] = useState(null);
   const [activeLine, setActiveLine] = useState(1);
   const [copied, setCopied] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -223,6 +232,43 @@ const SessionPage = () => {
     setChatInput('');
   };
 
+  // ── AI Review Handlers ──────────────────────────────────────────────────────
+  const handleRunAiReview = async () => {
+    const activeCode = code || '';
+    const activeLang = displayLanguage;
+
+    toast.promise(
+      runAiReviewMutation.mutateAsync({ code: activeCode, language: activeLang }),
+      {
+        loading: 'AI Review is analyzing your code...',
+        success: (data) => {
+          setAiReviewResult(data);
+          setShowAiReview(true);
+          setShowChat(false);
+          setShowParticipants(false);
+          setShowComments(false);
+          return 'AI Code Review complete!';
+        },
+        error: (err) => `AI Review failed: ${err.message}`,
+      },
+      {
+        style: {
+          background: '#1e293b',
+          color: '#f1f5f9',
+        },
+      }
+    );
+  };
+
+  const handleSelectReviewLine = (line) => {
+    const editor = editorRef.current;
+    if (editor && line) {
+      editor.revealLineInCenter(line);
+      editor.setPosition({ lineNumber: line, column: 1 });
+      editor.focus();
+    }
+  };
+
   // ── Loading state ───────────────────────────────────────────────────────────
   const isLoading = metaLoading && !sessionData;
   if (isLoading) {
@@ -319,6 +365,22 @@ const SessionPage = () => {
             <span className="hidden sm:inline">Save</span>
           </button>
 
+          {/* AI Review button */}
+          <button
+            id="run-ai-review-btn"
+            onClick={handleRunAiReview}
+            disabled={runAiReviewMutation.isPending}
+            className="btn-primary py-1.5 px-2.5 text-xs flex items-center gap-1.5"
+            title="Analyze code with AI"
+          >
+            {runAiReviewMutation.isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            <span>{runAiReviewMutation.isPending ? 'Reviewing...' : 'AI Review'}</span>
+          </button>
+
           {/* Active users */}
           <ActiveUserList
             participants={participants}
@@ -329,7 +391,7 @@ const SessionPage = () => {
           {/* Chat toggle */}
           <button
             id="toggle-chat-btn"
-            onClick={() => { setShowChat(!showChat); setShowParticipants(false); setShowComments(false); }}
+            onClick={() => { setShowChat(!showChat); setShowParticipants(false); setShowComments(false); setShowAiReview(false); }}
             className={`btn-ghost p-2 relative ${showChat ? 'text-brand-500' : ''}`}
             title="Toggle chat"
           >
@@ -344,7 +406,7 @@ const SessionPage = () => {
           {/* Comments toggle */}
           <button
             id="toggle-comments-btn"
-            onClick={() => { setShowComments(!showComments); setShowChat(false); setShowParticipants(false); }}
+            onClick={() => { setShowComments(!showComments); setShowChat(false); setShowParticipants(false); setShowAiReview(false); }}
             className={`btn-ghost p-2 relative ${showComments ? 'text-brand-500' : ''}`}
             title="Toggle comments"
           >
@@ -356,10 +418,22 @@ const SessionPage = () => {
             )}
           </button>
 
+          {/* AI Review Summary toggle */}
+          {aiReviewResult && (
+            <button
+              id="toggle-ai-review-btn"
+              onClick={() => { setShowAiReview(!showAiReview); setShowChat(false); setShowParticipants(false); setShowComments(false); }}
+              className={`btn-ghost p-2 relative ${showAiReview ? 'text-brand-500' : ''}`}
+              title="Show AI review results"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Participants list toggle */}
           <button
             id="toggle-participants-btn"
-            onClick={() => { setShowParticipants(!showParticipants); setShowChat(false); setShowComments(false); }}
+            onClick={() => { setShowParticipants(!showParticipants); setShowChat(false); setShowComments(false); setShowAiReview(false); }}
             className={`btn-ghost p-2 ${showParticipants ? 'text-brand-500' : ''}`}
             title="Participants"
           >
@@ -429,6 +503,12 @@ const SessionPage = () => {
               editorRef={editorRef}
               monacoRef={monacoRef}
               comments={comments}
+            />
+            {/* AI Review Squiggley overlay */}
+            <AiReviewOverlay
+              editorRef={editorRef}
+              monacoRef={monacoRef}
+              review={aiReviewResult}
             />
           </div>
         </div>
@@ -572,6 +652,15 @@ const SessionPage = () => {
             sessionId={sessionId}
             activeLine={activeLine}
             onClose={() => setShowComments(false)}
+          />
+        )}        {/* ── Side panel: AI Review Results ───────────────────────────────── */}
+        {showAiReview && aiReviewResult && (
+          <AiReviewSummarySidebar
+            review={aiReviewResult}
+            onSelectLine={handleSelectReviewLine}
+            onReRun={handleRunAiReview}
+            isPending={runAiReviewMutation.isPending}
+            onClose={() => setShowAiReview(false)}
           />
         )}
       </div>

@@ -7,6 +7,7 @@ const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
 const sessionCommentController = require('../controllers/sessionCommentController');
+const aiReviewController = require('../controllers/aiReviewController');
 
 // All session routes require authentication
 router.use(protect);
@@ -87,6 +88,17 @@ const addReplyRules = [
     .isLength({ max: 1000 }).withMessage('Reply cannot exceed 1000 characters'),
 ];
 
+const runAiReviewRules = [
+  ...sessionIdParam,
+  body('code')
+    .notEmpty().withMessage('Code content is required')
+    .isString().withMessage('Code must be a string'),
+  body('language')
+    .optional()
+    .isIn(SUPPORTED_LANGUAGES)
+    .withMessage(`Language must be one of: ${SUPPORTED_LANGUAGES.join(', ')}`),
+];
+
 // ─── Routes ────────────────────────────────────────────────────────────────────
 
 /**
@@ -156,6 +168,18 @@ router.post(
   addReplyRules,
   validate,
   sessionCommentController.addReply
+);
+
+// ─── AI Review Routes ──────────────────────────────────────────────────────────
+
+/**
+ * POST /api/sessions/:sessionId/ai-review  — trigger AI code review
+ */
+router.post(
+  '/:sessionId/ai-review',
+  runAiReviewRules,
+  validate,
+  aiReviewController.runCodeReview
 );
 
 module.exports = router;

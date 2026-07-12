@@ -164,3 +164,13 @@ export const useAddSessionReply = (sessionId) => {
     onError: (err) => toast.error(err.message),
   });
 };
+
+export const useRunAiReview = (sessionId) => {
+  return useMutation({
+    mutationFn: async ({ code, language }) => {
+      const { data } = await api.post(`/sessions/${sessionId}/ai-review`, { code, language });
+      return data.data.review;
+    },
+    onError: (err) => toast.error(`AI Review failed: ${err.message}`),
+  });
+};
