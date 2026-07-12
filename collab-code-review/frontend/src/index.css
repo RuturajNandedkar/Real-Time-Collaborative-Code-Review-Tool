@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg: theme('colors.surface.50');
+    --color-text: theme('colors.slate.900');
+  }
+
+  .dark {
+    --color-bg: theme('colors.surface.900');
+    --color-text: theme('colors.slate.50');
+  }
+
+  * {
+    @apply border-slate-200 dark:border-slate-700;
+    box-sizing: border-box;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-surface-50 dark:bg-surface-900 text-slate-900 dark:text-slate-50 font-sans antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400 dark:bg-slate-500;
+  }
+}
+
+@layer components {
+  /* ─── Buttons ─────────────────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 hover:bg-brand-700 text-white focus:ring-brand-500
+           shadow-sm hover:shadow-md active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply btn bg-slate-100 hover:bg-slate-200 dark:bg-surface-700 dark:hover:bg-slate-600
+           text-slate-700 dark:text-slate-200 focus:ring-slate-400;
+  }
+
+  .btn-ghost {
+    @apply btn hover:bg-slate-100 dark:hover:bg-surface-700
+           text-slate-600 dark:text-slate-300 focus:ring-slate-400;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 hover:bg-red-700 text-white focus:ring-red-500
+           shadow-sm hover:shadow-md active:scale-95;
+  }
+
+  /* ─── Inputs ──────────────────────────────────────────────────────────── */
+  .input {
+    @apply w-full px-4 py-2.5 rounded-lg border bg-white dark:bg-surface-800
+           border-slate-200 dark:border-slate-700
+           text-slate-900 dark:text-slate-50
+           placeholder-slate-400 dark:placeholder-slate-500
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+           transition-all duration-200 text-sm;
+  }
+
+  /* ─── Cards ───────────────────────────────────────────────────────────── */
+  .card {
+    @apply bg-white dark:bg-surface-800 rounded-2xl border border-slate-100 dark:border-slate-700
+           shadow-sm;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-lg hover:border-brand-200 dark:hover:border-brand-800
+           transition-all duration-200 cursor-pointer;
+  }
+
+  /* ─── Badges ──────────────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-brand {
+    @apply badge bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300;
+  }
+
+  .badge-green {
+    @apply badge bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300;
+  }
+
+  .badge-amber {
+    @apply badge bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300;
+  }
+
+  .badge-red {
+    @apply badge bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300;
+  }
+
+  /* ─── Glass morphism ─────────────────────────────────────────────────── */
+  .glass {
+    @apply backdrop-blur-md bg-white/70 dark:bg-surface-900/70 border border-white/20 dark:border-slate-700/50;
+  }
+
+  /* ─── Animations ──────────────────────────────────────────────────────── */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-500 to-purple-500;
+  }
+
+  .ring-brand {
+    @apply ring-2 ring-brand-500 ring-offset-2 dark:ring-offset-surface-900;
+  }
+}

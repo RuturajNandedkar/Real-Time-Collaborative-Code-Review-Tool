@@ -1,0 +1,96 @@
+const express = require('express');
+const { body, param } = require('express-validator');
+const router = express.Router();
+
+const sessionController = require('../controllers/sessionController');
+const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
+
+// All session routes require authentication
+router.use(protect);
+
+// ─── Validation Rules ──────────────────────────────────────────────────────────
+
+const SUPPORTED_LANGUAGES = [
+  'javascript', 'python', 'java', 'cpp',
+  'typescript', 'csharp', 'go', 'rust', 'plaintext',
+];
+
+const createSessionRules = [
+  body('title')
+    .trim()
+    .notEmpty().withMessage('Session title is required')
+    .isLength({ max: 120 }).withMessage('Title cannot exceed 120 characters'),
+  body('language')
+    .notEmpty().withMessage('Language is required')
+    .isIn(SUPPORTED_LANGUAGES)
+    .withMessage(`Language must be one of: ${SUPPORTED_LANGUAGES.join(', ')}`),
+  body('code')
+    .optional()
+    .isString().withMessage('Code must be a string')
+    .isLength({ max: 500000 }).withMessage('Code cannot exceed 500 KB'),
+];
+
+const sessionIdParam = [
+  param('sessionId')
+    .trim()
+    .notEmpty().withMessage('Session ID is required')
+    .isUUID().withMessage('Session ID must be a valid UUID'),
+];
+
+const joinSessionRules = [
+  ...sessionIdParam,
+  body('role')
+    .optional()
+    .isIn(['reviewer', 'observer'])
+    .withMessage('Role must be "reviewer" or "observer"'),
+];
+
+const updateCodeRules = [
+  ...sessionIdParam,
+  body('code')
+    .notEmpty().withMessage('Code content is required')
+    .isString().withMessage('Code must be a string'),
+];
+
+// ─── Routes ────────────────────────────────────────────────────────────────────
+
+/**
+ * GET  /api/sessions            — list all sessions for authenticated user
+ * POST /api/sessions            — create a new session
+ */
+router
+  .route('/')
+  .get(sessionController.getUserSessions)
+  .post(createSessionRules, validate, sessionController.createSession);
+
+/**
+ * GET    /api/sessions/:sessionId  — fetch session by UUID
+ * DELETE /api/sessions/:sessionId  — archive session
+ */
+router
+  .route('/:sessionId')
+  .get(sessionIdParam, validate, sessionController.getSessionById)
+  .delete(sessionIdParam, validate, sessionController.archiveSession);
+
+/**
+ * POST  /api/sessions/:sessionId/join  — join as participant
+ */
+router.post(
+  '/:sessionId/join',
+  joinSessionRules,
+  validate,
+  sessionController.joinSession
+);
+
+/**
+ * PATCH /api/sessions/:sessionId/code  — REST code update (socket is preferred)
+ */
+router.patch(
+  '/:sessionId/code',
+  updateCodeRules,
+  validate,
+  sessionController.updateSessionCode
+);
+
+module.exports = router;
