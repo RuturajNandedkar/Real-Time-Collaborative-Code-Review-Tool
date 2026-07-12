@@ -64,7 +64,10 @@ const useAuthStore = create(
       // ─── Restore session ───────────────────────────────────────────────
       restoreSession: async () => {
         const token = localStorage.getItem('ccr_token');
-        if (!token) return;
+        if (!token) {
+          set({ isLoading: false });
+          return;
+        }
 
         set({ isLoading: true });
         try {
