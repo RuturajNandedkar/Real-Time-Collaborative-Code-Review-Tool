@@ -1,16 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft, Save, Maximize2, Minimize2, Languages,
   MessageSquare, Users, Copy, CheckCheck, Loader2,
-  Clock, Send, X, ChevronDown
+  Clock, Send, X, ChevronDown, MessageSquareCode
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useSessionSocket from '../../hooks/useSessionSocket';
-import { useSession } from '../../hooks/useSessions';
+import { useSession, useSessionComments, sessionCommentKeys } from '../../hooks/useSessions';
 import MonacoEditor from '../../components/editor/MonacoEditor';
 import CursorOverlay from '../../components/editor/CursorOverlay';
+import CommentOverlay from '../../components/editor/CommentOverlay';
 import ActiveUserList from '../../components/session/ActiveUserList';
+import SessionCommentsSidebar from '../../components/session/SessionCommentsSidebar';
 import { formatDistanceToNow, format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -44,9 +47,12 @@ const SessionPage = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
 
   // REST bootstrap (for page title, meta — socket provides live data)
   const { data: sessionMeta, isLoading: metaLoading } = useSession(sessionId);
+  // Comments query to display count in toolbar and pass to CommentOverlay
+  const { data: comments = [] } = useSessionComments(sessionId);
 
   // All real-time state from socket
   const {
@@ -71,6 +77,8 @@ const SessionPage = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [activeLine, setActiveLine] = useState(1);
   const [copied, setCopied] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
@@ -92,6 +100,57 @@ const SessionPage = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // ── Setup Socket comment sync ───────────────────────────────────────────────
+  useEffect(() => {
+    const socket = useSessionSocket(sessionId).socket; // get socket client context
+    const activeSocket = queryClient.getQueryData(['socket']) || window.socketInstance; // fallback
+    
+    // We can also bind listeners directly inside useSessionSocket or dynamically
+    // In our useSessionSocket implementation, it already returns getSocket()
+    // Let's retrieve getSocket()
+    const getSocket = () => {
+      try {
+        const { getSocket: gs } = require('../../lib/socket');
+        return gs();
+      } catch {
+        return window.socket;
+      }
+    };
+  }, [sessionId, queryClient]);
+
+  // Handle live comment synchronization
+  useEffect(() => {
+    // Invalidate react query cache on socket events
+    const socket = useSessionSocket(sessionId).socket;
+    // Since useSessionSocket returns getSocket() internally, let's grab it:
+    const { getSocket } = require('../../lib/socket');
+    const s = getSocket();
+
+    if (!s) return;
+
+    const handleCommentAdded = ({ comment }) => {
+      queryClient.invalidateQueries({ queryKey: sessionCommentKeys.all(sessionId) });
+      if (comment.author?._id !== user?._id) {
+        toast(`New comment on Line ${comment.lineNumber}`, {
+          icon: '💬',
+          style: { background: '#1e293b', color: '#f1f5f9' }
+        });
+      }
+    };
+
+    const handleCommentUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: sessionCommentKeys.all(sessionId) });
+    };
+
+    s.on('session:comment-added', handleCommentAdded);
+    s.on('session:comment-updated', handleCommentUpdated);
+
+    return () => {
+      s.off('session:comment-added', handleCommentAdded);
+      s.off('session:comment-updated', handleCommentUpdated);
+    };
+  }, [sessionId, queryClient, user?._id]);
+
   // ── Debounced code-change emitter ──────────────────────────────────────────
   const debouncedEmitCode = useDebounceCallback(emitCodeChange, 120);
 
@@ -109,6 +168,10 @@ const SessionPage = () => {
       if (!e) return;
       const pos = e.position;
       const sel = e.selection;
+      
+      // Update local active line
+      setActiveLine(pos.lineNumber);
+
       emitCursorMove({
         lineNumber: pos.lineNumber,
         column: pos.column,
@@ -266,7 +329,7 @@ const SessionPage = () => {
           {/* Chat toggle */}
           <button
             id="toggle-chat-btn"
-            onClick={() => { setShowChat(!showChat); setShowParticipants(false); }}
+            onClick={() => { setShowChat(!showChat); setShowParticipants(false); setShowComments(false); }}
             className={`btn-ghost p-2 relative ${showChat ? 'text-brand-500' : ''}`}
             title="Toggle chat"
           >
@@ -278,10 +341,25 @@ const SessionPage = () => {
             )}
           </button>
 
+          {/* Comments toggle */}
+          <button
+            id="toggle-comments-btn"
+            onClick={() => { setShowComments(!showComments); setShowChat(false); setShowParticipants(false); }}
+            className={`btn-ghost p-2 relative ${showComments ? 'text-brand-500' : ''}`}
+            title="Toggle comments"
+          >
+            <MessageSquareCode className="w-4 h-4" />
+            {comments.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-brand-600 rounded-full text-[9px] text-white flex items-center justify-center font-bold">
+                {comments.length}
+              </span>
+            )}
+          </button>
+
           {/* Participants list toggle */}
           <button
             id="toggle-participants-btn"
-            onClick={() => { setShowParticipants(!showParticipants); setShowChat(false); }}
+            onClick={() => { setShowParticipants(!showParticipants); setShowChat(false); setShowComments(false); }}
             className={`btn-ghost p-2 ${showParticipants ? 'text-brand-500' : ''}`}
             title="Participants"
           >
@@ -345,6 +423,12 @@ const SessionPage = () => {
               editorRef={editorRef}
               monacoRef={monacoRef}
               remoteCursors={remoteCursors}
+            />
+            {/* Comment indicators overlay */}
+            <CommentOverlay
+              editorRef={editorRef}
+              monacoRef={monacoRef}
+              comments={comments}
             />
           </div>
         </div>
@@ -480,6 +564,15 @@ const SessionPage = () => {
               </>
             )}
           </div>
+        )}
+
+        {/* ── Side panel: Comments ────────────────────────────────────────── */}
+        {showComments && (
+          <SessionCommentsSidebar
+            sessionId={sessionId}
+            activeLine={activeLine}
+            onClose={() => setShowComments(false)}
+          />
         )}
       </div>
     </div>

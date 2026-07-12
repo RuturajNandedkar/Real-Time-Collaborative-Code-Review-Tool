@@ -6,6 +6,8 @@ const sessionController = require('../controllers/sessionController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
+const sessionCommentController = require('../controllers/sessionCommentController');
+
 // All session routes require authentication
 router.use(protect);
 
@@ -53,6 +55,38 @@ const updateCodeRules = [
     .isString().withMessage('Code must be a string'),
 ];
 
+const addSessionCommentRules = [
+  ...sessionIdParam,
+  body('lineNumber')
+    .notEmpty().withMessage('Line number is required')
+    .isInt({ min: 1 }).withMessage('Line number must be a positive integer'),
+  body('text')
+    .trim()
+    .notEmpty().withMessage('Comment text is required')
+    .isLength({ max: 2000 }).withMessage('Comment cannot exceed 2000 characters'),
+];
+
+const toggleResolveCommentRules = [
+  ...sessionIdParam,
+  param('commentId')
+    .notEmpty().withMessage('Comment ID is required')
+    .isMongoId().withMessage('Comment ID must be a valid Mongo ID'),
+  body('resolved')
+    .notEmpty().withMessage('Resolved state is required')
+    .isBoolean().withMessage('Resolved must be a boolean value'),
+];
+
+const addReplyRules = [
+  ...sessionIdParam,
+  param('commentId')
+    .notEmpty().withMessage('Comment ID is required')
+    .isMongoId().withMessage('Comment ID must be a valid Mongo ID'),
+  body('text')
+    .trim()
+    .notEmpty().withMessage('Reply text is required')
+    .isLength({ max: 1000 }).withMessage('Reply cannot exceed 1000 characters'),
+];
+
 // ─── Routes ────────────────────────────────────────────────────────────────────
 
 /**
@@ -91,6 +125,37 @@ router.patch(
   updateCodeRules,
   validate,
   sessionController.updateSessionCode
+);
+
+// ─── Comment Routes ────────────────────────────────────────────────────────────
+
+/**
+ * GET  /api/sessions/:sessionId/comments  — get all comments
+ * POST /api/sessions/:sessionId/comments  — create a new comment
+ */
+router
+  .route('/:sessionId/comments')
+  .get(sessionIdParam, validate, sessionCommentController.getComments)
+  .post(addSessionCommentRules, validate, sessionCommentController.addComment);
+
+/**
+ * PATCH /api/sessions/:sessionId/comments/:commentId/resolve  — toggle resolve state
+ */
+router.patch(
+  '/:sessionId/comments/:commentId/resolve',
+  toggleResolveCommentRules,
+  validate,
+  sessionCommentController.toggleResolve
+);
+
+/**
+ * POST /api/sessions/:sessionId/comments/:commentId/replies  — add reply
+ */
+router.post(
+  '/:sessionId/comments/:commentId/replies',
+  addReplyRules,
+  validate,
+  sessionCommentController.addReply
 );
 
 module.exports = router;

@@ -104,3 +104,63 @@ export const useArchiveSession = () => {
     onError: (err) => toast.error(err.message),
   });
 };
+
+// ─── Session Comments ──────────────────────────────────────────────────────────
+
+export const sessionCommentKeys = {
+  all: (sessionId) => ['sessions', sessionId, 'comments'],
+};
+
+export const useSessionComments = (sessionId) => {
+  return useQuery({
+    queryKey: sessionCommentKeys.all(sessionId),
+    queryFn: async () => {
+      const { data } = await api.get(`/sessions/${sessionId}/comments`);
+      return data.data.comments;
+    },
+    enabled: !!sessionId,
+    staleTime: 5000,
+  });
+};
+
+export const useAddSessionComment = (sessionId) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ lineNumber, text }) => {
+      const { data } = await api.post(`/sessions/${sessionId}/comments`, { lineNumber, text });
+      return data.data.comment;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionCommentKeys.all(sessionId) });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+};
+
+export const useToggleResolveSessionComment = (sessionId) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ commentId, resolved }) => {
+      const { data } = await api.patch(`/sessions/${sessionId}/comments/${commentId}/resolve`, { resolved });
+      return data.data.comment;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionCommentKeys.all(sessionId) });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+};
+
+export const useAddSessionReply = (sessionId) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ commentId, text }) => {
+      const { data } = await api.post(`/sessions/${sessionId}/comments/${commentId}/replies`, { text });
+      return data.data.comment;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionCommentKeys.all(sessionId) });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+};

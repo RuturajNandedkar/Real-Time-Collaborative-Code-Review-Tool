@@ -101,6 +101,10 @@ All protected endpoints require a valid JWT token in the `Authorization` header 
 | **POST** | `/api/sessions/:sessionId/join` | Join session as reviewer/observer | 🔒 Protected |
 | **PATCH** | `/api/sessions/:sessionId/code` | Save code content | 🔒 Protected |
 | **DELETE** | `/api/sessions/:sessionId` | Archive session | 🔒 Protected |
+| **GET** | `/api/sessions/:sessionId/comments` | Fetch all comments for a session | 🔒 Protected |
+| **POST** | `/api/sessions/:sessionId/comments` | Add comment to a specific line | 🔒 Protected |
+| **PATCH** | `/api/sessions/:sessionId/comments/:commentId/resolve` | Resolve/reopen comment thread | 🔒 Protected |
+| **POST** | `/api/sessions/:sessionId/comments/:commentId/replies` | Add reply to comment thread | 🔒 Protected |
 
 ---
 
@@ -144,6 +148,8 @@ All protected endpoints require a valid JWT token in the `Authorization` header 
 - `session:saved` (`{ savedAt, savedBy }`): Broadcast successful DB write.
 - `session:language-updated` (`{ language }`): Broadcast code language switch.
 - `session:chat-message` (`{ message, sender, timestamp }`): Receive chat.
+- `session:comment-added` (`{ comment }`): Broadcast new comment.
+- `session:comment-updated` (`{ comment }`): Broadcast resolved/unresolved state or replies updates.
 
 ---
 
