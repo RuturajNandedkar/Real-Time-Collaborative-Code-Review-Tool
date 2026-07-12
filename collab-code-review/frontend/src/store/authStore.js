@@ -9,7 +9,7 @@ const useAuthStore = create(
       user: null,
       token: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: true,
       error: null,
 
       // ─── Register ──────────────────────────────────────────────────────
