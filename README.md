@@ -1,180 +1,39 @@
-# CollabCode Review — Real-Time Collaborative Code Review Tool
+# 💻 CollabCode Review — Real-Time Collaborative Code Review Tool
 
-A production-ready full-stack MERN application for real-time collaborative code reviews, integrated with Monaco Editor, and powered by Socket.IO live synchronization.
+A production-ready, full-stack collaborative environment for real-time code reviews. Features include dynamic syntax-highlighted editing with Monaco Editor, inline multi-threaded line comments (similar to GitHub PR reviews), live cursor tracking, and instant automated AI Code Reviews.
 
 ---
 
-## 🏗️ Project Structure
+## 📸 Visual Previews
 
-The project is structured as a monorepo under the `collab-code-review/` directory:
+| Code Editor & Comments Sidebar | AI Code Review Panel & Score Gauge |
+| ----------------------------- | ---------------------------------- |
+| *[Insert Editor Screenshot/GIF]* | *[Insert AI Review Screenshot/GIF]* |
 
-```
-collab-code-review/
-├── backend/                    # Node.js + Express + Socket.IO + MongoDB
-│   ├── src/
-│   │   ├── config/             # Environment config & Mongoose connection
-│   │   ├── controllers/        # Express route handlers
-│   │   ├── middleware/         # Auth, validation, rate-limiting, error handling
-│   │   ├── models/             # Mongoose schemas (User, ReviewRoom, Comment, Session)
-│   │   ├── routes/             # REST routes
-│   │   ├── services/           # Business logic layer
-│   │   ├── sockets/            # Socket.IO event namespaces & handlers
-│   │   └── utils/              # Winston logger & Custom AppError
-│   └── package.json
-│
-└── frontend/                   # React + Vite + Tailwind CSS
-    ├── src/
-    │   ├── components/         # Common layout, MonacoEditor & CursorOverlay
-    │   ├── hooks/              # Zustand + Socket.IO connection hooks
-    │   ├── lib/                # API client & Socket.IO singletons
-    │   ├── pages/              # Auth, Dashboard, Rooms, Sessions
-    │   ├── store/              # Zustand global auth state store
-    │   └── App.jsx             # Main Router
-    └── package.json
+---
+
+## 🏗️ Architecture Overview
+
+The application is built on a decoupled MERN stack architecture utilizing stateful WebSocket connections for instant operational synchronization.
+
+```mermaid
+graph TD
+    Client1["React Client A"] <-->|Socket.IO| Server["Node.js + Socket.IO Server"]
+    Client2["React Client B"] <-->|Socket.IO| Server
+    Server <--> Mongoose["Mongoose ODM"]
+    Mongoose <--> MongoDB[("MongoDB")]
+    Server -->|API request| LLM["OpenAI / Anthropic APIs"]
 ```
 
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js >= 18
-- MongoDB (running locally or a MongoDB Atlas connection string)
-
-### 1. Backend Setup
-
-Configure the environment variables and start the server:
-
-```bash
-cd collab-code-review/backend
-# Copy variables template
-cp .env.example .env
-# Edit .env and configure MONGO_URI and JWT_SECRET
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The backend server runs at `http://localhost:5000`. The API health check is available at `http://localhost:5000/api/health`.
-
-### 2. Frontend Setup
-
-In a separate terminal, install the frontend dependencies and launch the Vite dev server:
-
-```bash
-cd collab-code-review/frontend
-# Install dependencies
-npm install
-
-# Launch development server
-npm run dev
-```
-
-The frontend application runs at `http://localhost:5173`.
-
----
-
-## 🔌 API Endpoints
-
-All protected endpoints require a valid JWT token in the `Authorization` header (`Bearer <token>`).
-
-| Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| **GET** | `/api/health` | Service health status | Public |
-| **POST** | `/api/auth/register` | Register new user | Public |
-| **POST** | `/api/auth/login` | Login user & return token | Public |
-| **GET** | `/api/auth/me` | Fetch profile info | 🔒 Protected |
-| **GET** | `/api/rooms` | Fetch all user rooms | 🔒 Protected |
-| **POST** | `/api/rooms` | Create new review room | 🔒 Protected |
-| **GET** | `/api/rooms/:id` | Get room details by ID | 🔒 Protected |
-| **PATCH** | `/api/rooms/:id/code` | Persist code (REST fallback) | 🔒 Protected |
-| **POST** | `/api/rooms/join` | Join room via invite code | 🔒 Protected |
-| **DELETE** | `/api/rooms/:id` | Archive room | 🔒 Protected |
-| **GET** | `/api/rooms/:id/comments` | List room comments | 🔒 Protected |
-| **POST** | `/api/rooms/:id/comments` | Add comment to code line | 🔒 Protected |
-| **GET** | `/api/sessions` | List active sessions | 🔒 Protected |
-| **POST** | `/api/sessions` | Create a new review session | 🔒 Protected |
-| **GET** | `/api/sessions/:sessionId` | Get session by UUID | 🔒 Protected |
-| **POST** | `/api/sessions/:sessionId/join` | Join session as reviewer/observer | 🔒 Protected |
-| **PATCH** | `/api/sessions/:sessionId/code` | Save code content | 🔒 Protected |
-| **DELETE** | `/api/sessions/:sessionId` | Archive session | 🔒 Protected |
-| **GET** | `/api/sessions/:sessionId/comments` | Fetch all comments for a session | 🔒 Protected |
-| **POST** | `/api/sessions/:sessionId/comments` | Add comment to a specific line | 🔒 Protected |
-| **PATCH** | `/api/sessions/:sessionId/comments/:commentId/resolve` | Resolve/reopen comment thread | 🔒 Protected |
-| **POST** | `/api/sessions/:sessionId/comments/:commentId/replies` | Add reply to comment thread | 🔒 Protected |
-
----
-
-## 🔴 Socket.IO Collaborative Protocols
-
-### 1. Review Rooms (Legacy Room Namespace)
-
-#### Client → Server
-- `join-room` (`{ roomId }`): Join a specific room.
-- `leave-room` (`{ roomId }`): Leave room.
-- `code-change` (`{ roomId, code }`): Broadcast text modifications.
-- `cursor-move` (`{ roomId, cursor }`): Broadcast cursor position.
-- `new-comment` (`{ roomId, comment }`): Broadcast new line comments.
-- `typing` (`{ roomId, isTyping }`): Toggle user typing indicators.
-
-#### Server → Client
-- `room:users-updated` (`{ users }`): Active room members update.
-- `room:user-joined` (`{ user }`): Broadcaster joined room notice.
-- `room:user-left` (`{ user }`): Broadcaster left room notice.
-- `code:updated` (`{ code, sender }`): Received remote text change.
-- `cursor:updated` (`{ cursor, user }`): Render remote user cursor.
-- `comment:added` (`{ comment }`): Push comment update.
-
-### 2. Live Sessions (New Session Namespace)
-
-#### Client → Server
-- `session:join` (`{ sessionId }`): Connect to a UUID-addressed session.
-- `session:leave` (`{ sessionId }`): Disconnect from session.
-- `session:code-change` (`{ sessionId, code, version }`): Edit code content.
-- `session:cursor-move` (`{ sessionId, cursor }`): Send `{ lineNumber, column, selection }`.
-- `session:force-save` (`{ sessionId }`): Trigger immediate database auto-save.
-- `session:language-change` (`{ sessionId, language }`): Switch language.
-- `session:chat` (`{ sessionId, message }`): Broadcast message.
-
-#### Server → Client
-- `session:joined` (`{ sessionId, session, you, participants }`): Full snapshot bootstrap.
-- `session:user-joined` (`{ participant, participants }`): Broadcast user joined.
-- `session:user-left` (`{ participant, participants }`): Broadcast user left.
-- `session:code-updated` (`{ code, version, sender }`): Broadcast live edit.
-- `session:cursor-updated` (`{ cursor, participant }`): Broadcast remote cursor change.
-- `session:saved` (`{ savedAt, savedBy }`): Broadcast successful DB write.
-- `session:language-updated` (`{ language }`): Broadcast code language switch.
-- `session:chat-message` (`{ message, sender, timestamp }`): Receive chat.
-- `session:comment-added` (`{ comment }`): Broadcast new comment.
-- `session:comment-updated` (`{ comment }`): Broadcast resolved/unresolved state or replies updates.
-
----
-
-## 🤖 AI Code Review System
-
-The platform features an automated AI Code Review integration that analyzes the current code using Anthropic Claude or OpenAI models, with an intelligent local regex-based analyzer fallback for testing/demo environments.
-
-- **Trigger API**: `POST /api/sessions/:sessionId/ai-review` (Payload: `{ code, language }`)
-- **JSON Structured Response**: Returns categorized issues:
-  - `bugs` (`array` of `{ line, issue, severity }`)
-  - `codeSmells` (`array` of `{ line, issue, suggestion }`)
-  - `securityIssues` (`array` of `{ line, issue, severity }`)
-  - `overallQualityScore` (`number` between 0-100)
-- **Monaco Annotations**: Color-coded squiggly underlines on matching lines in the editor (Red for Security/High severity bugs, Orange for Medium severity, Yellow for Smells/Low severity) along with detailed markdown hover messages.
-- **Interactive Summary Panel**: Displayed in the sidebar with a dynamic overall quality score gauge and list of reviews. Clicking on any issue card automatically scrolls the Monaco editor to and highlights the target line.
-
----
-
-## 🛡️ Security & Reliability
-
-- **Socket JWT Authorization**: Custom socket handshake validation matches token on connection.
-- **Express-Rate-Limit**: 100 requests per 15 minutes overall, and strict limit of 10 requests per 15 minutes on auth routes.
-- **Input Sanitization**: Router controllers validated with `express-validator` rules.
-- **Security Headers**: Secured by `helmet.js` configurations.
-- **Debounced Save**: Automatically updates MongoDB every 3 seconds after typing ceases, minimizing DB queries while maintaining persistency.
+### 🔴 Real-Time Room-Based Synchronization
+1. **Connection & Auth**: When a participant joins a session, a WebSocket handshake is authorized using a JWT token.
+2. **Room Isolation**: The socket server subscribes the client to a specific Room channel using `socket.join(sessionId)`.
+3. **Optimistic Sync**:
+   - Code edits, cursor movements, and text selections are broadcast instantly to other room members using `socket.to(sessionId).emit(...)`.
+   - Monaco Editor handles character insertion and layout calculations locally for each user.
+4. **Debounced DB Persistence**:
+   - To reduce database overhead, changes are held in-memory on the socket server.
+   - A debounced auto-save timer writes the latest code to MongoDB 3 seconds after typing stops. Users can also force an immediate save with `Ctrl+S`.
 
 ---
 
@@ -183,9 +42,121 @@ The platform features an automated AI Code Review integration that analyzes the 
 | Layer | Technologies |
 |-------|--------------|
 | **Frontend** | React 18, Vite, Tailwind CSS 3 |
-| **State & Fetch** | Zustand (persistent global auth), TanStack Query (caching & mutations) |
-| **Code Editor** | Monaco Editor (`@monaco-editor/react`) with dynamic cursors overlay |
-| **HTTP & WS** | Axios, Socket.IO Client |
-| **Backend** | Node.js, Express 4, Socket.IO Server |
-| **Database** | MongoDB, Mongoose 8 |
-| **Logging** | Winston (centralized log streams) |
+| **State & Queries** | Zustand (persistent auth), TanStack Query (cached CRUD & mutations) |
+| **Code Editor** | Monaco Editor (`@monaco-editor/react`) with custom cursor overlays |
+| **Real-time Sync** | Socket.IO Client & Server (WebSocket & polling fallbacks) |
+| **Backend** | Node.js, Express 4, Winston Logger |
+| **Database** | MongoDB, Mongoose 8 (indexed queries) |
+| **AI Integration** | OpenAI (GPT-4o-mini), Anthropic (Claude-3-5-Sonnet) |
+
+---
+
+## 🚀 Getting Started
+
+### Project Layout
+```
+collab-code-review/
+├── backend/                    # Node.js Express server + Socket.IO handlers
+│   ├── Dockerfile
+│   └── src/
+└── frontend/                   # React web dashboard + Monaco editor
+    ├── Dockerfile
+    ├── nginx.conf
+    └── src/
+docker-compose.yml              # Multi-container local orchestra
+.env.example                    # Template for environment configurations
+```
+
+---
+
+### 🐳 Option A: Setup in 60 seconds with Docker Compose (Recommended)
+
+Spins up the React client, Node.js server, and MongoDB instance instantly.
+
+1. **Clone the repository** and make sure Docker is running on your machine.
+2. **Launch all services**:
+   ```bash
+   docker-compose up --build
+   ```
+3. Open **`http://localhost:8080`** in your browser. The backend API is reachable at `http://localhost:5000/api`.
+
+---
+
+### 💻 Option B: Manual Local Setup
+
+#### Prerequisites
+* Node.js >= 18
+* MongoDB running locally (default: `mongodb://localhost:27017`)
+
+#### 1. Backend Setup
+```bash
+cd collab-code-review/backend
+
+# Copy variables template
+cp .env.example .env
+
+# Install Node modules
+npm install
+
+# Start in development mode (with nodemon)
+npm run dev
+```
+
+#### 2. Frontend Setup
+In a new terminal window:
+```bash
+cd collab-code-review/frontend
+
+# Install dependencies
+npm install
+
+# Start Vite dev server
+npm run dev
+```
+Open **`http://localhost:5173`** to access the dashboard.
+
+---
+
+## 🤖 AI Code Review Engine
+
+When a review is triggered (`POST /api/sessions/:sessionId/ai-review`), the backend analyzes the code and returns a structured JSON payload:
+- **Bugs & Code Smells**: Inline Monaco decoration squigglies are drawn relative to severity.
+- **Hover Messages**: Rich markdown tooltips display refactoring steps and warnings.
+- **Quality Score**: A circular progress gauge dynamically rates the overall code quality.
+
+*Note: If no API keys are provided in `.env`, the system automatically falls back to an intelligent, local regex-based analyzer to ensure it runs out-of-the-box.*
+
+---
+
+## 🌐 Deployment Guidelines
+
+### ⚠️ Critical Note on Serverless Hosting (e.g. Vercel/Netlify for Backend)
+> [!IMPORTANT]
+> **Socket.IO requires a persistent server connection.** 
+> You **cannot** host the backend/Socket.IO service on serverless platforms like Vercel Serverless Functions or Netlify Functions because they do not support persistent TCP/WebSocket connections.
+> 
+> - **Frontend**: Can be safely deployed to **Vercel**, **Netlify**, or any static web host.
+> - **Backend**: Must be deployed to a persistent server environment such as **Render (Web Service)**, **Railway**, **Fly.io**, **Heroku**, or a dedicated **VPS/Docker** environment.
+
+### Deploying the Backend on Render
+1. Create a new **Web Service** on Render.
+2. Connect your GitHub repository.
+3. Configure the following build settings:
+   - **Root Directory**: `collab-code-review/backend`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+4. Add environment variables:
+   - `MONGO_URI`: Your MongoDB Atlas connection string.
+   - `JWT_SECRET`: A long secure string.
+   - `CLIENT_ORIGIN`: The URL of your deployed frontend.
+
+### Deploying the Frontend on Vercel
+1. Create a new project on Vercel.
+2. Connect your GitHub repository.
+3. Configure the following build settings:
+   - **Root Directory**: `collab-code-review/frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. Add environment variables:
+   - `VITE_API_BASE_URL`: `https://your-backend.onrender.com/api`
+   - `VITE_SOCKET_URL`: `https://your-backend.onrender.com`

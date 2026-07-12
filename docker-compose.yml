@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6.0-jammy
+    container_name: ccr-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./collab-code-review/backend
+      dockerfile: Dockerfile
+    container_name: ccr-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/collab-code-review
+      - JWT_SECRET=production_docker_compose_super_secret_key
+      - CLIENT_ORIGIN=http://localhost:8080
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    depends_on:
+      - mongodb
+
+  frontend:
+    build:
+      context: ./collab-code-review/frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:5000/api
+        - VITE_SOCKET_URL=http://localhost:5000
+    container_name: ccr-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
